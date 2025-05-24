@@ -9,11 +9,13 @@
 #include <string.h>
 
 #include "hid-interface.h"
+#include "display.h"
 
 #define APP_BUTTON (GPIO_NUM_0) // Use BOOT signal by default
 
 void app_main() {
     HID_init();
+    display_init();
 
     // configures the BOOT button to send the <word> string
     const gpio_config_t boot_button_config = {
