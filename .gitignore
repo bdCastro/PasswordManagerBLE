@@ -2,3 +2,5 @@
 .DS_Store
 
 build/
+components/
+managed_components/
