@@ -1,4 +1,4 @@
-// display.h
+// hid-interface.c
 //
 //
 // developed by: Bruno Castro (github: bdCastro)

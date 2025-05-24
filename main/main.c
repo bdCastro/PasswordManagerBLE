@@ -1,4 +1,4 @@
-// display.h
+// main.c
 //
 //
 // developed by: Bruno Castro (github: bdCastro)
