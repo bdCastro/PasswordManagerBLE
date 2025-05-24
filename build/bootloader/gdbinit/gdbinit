@@ -1,0 +1,2 @@
+source /Users/bruno/Projects/PasswordManagerBLE/build/bootloader/gdbinit/symbols
+source /Users/bruno/Projects/PasswordManagerBLE/build/bootloader/gdbinit/connect
