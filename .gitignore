@@ -1,4 +1,7 @@
 # OS junk
 .DS_Store
 
+# IDF junk
+dependencies.lock
 build/
+managed_components/
