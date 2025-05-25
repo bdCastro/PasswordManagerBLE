@@ -10,33 +10,36 @@
 
 #include "hid-interface.h"
 #include "display.h"
+#include "ble-gatt.h"
 
 #define APP_BUTTON (GPIO_NUM_0) // Use BOOT signal by default
 
 void app_main() {
+    // Initialize HID interface, display, and BLE GATT
+    BLE_init();
     HID_init();
     display_init();
 
-    // configures the BOOT button to send the <word> string
-    const gpio_config_t boot_button_config = {
-        .pin_bit_mask = BIT64(APP_BUTTON),
-        .mode = GPIO_MODE_INPUT,
-        .intr_type = GPIO_INTR_DISABLE,
-        .pull_up_en = true,
-        .pull_down_en = false,
-    };
+    // // configures the BOOT button to send the <word> string
+    // const gpio_config_t boot_button_config = {
+    //     .pin_bit_mask = BIT64(APP_BUTTON),
+    //     .mode = GPIO_MODE_INPUT,
+    //     .intr_type = GPIO_INTR_DISABLE,
+    //     .pull_up_en = true,
+    //     .pull_down_en = false,
+    // };
 
-    ESP_ERROR_CHECK(gpio_config(&boot_button_config));
+    // ESP_ERROR_CHECK(gpio_config(&boot_button_config));
 
-    char* word = "bruno@teste.com.br\ttesteTESTEbanana\n\0";
-    while(true) {
-        static bool send_hid_data = true;
+    // char* word = "bruno@teste.com.br\ttesteTESTEbanana\n\0";
+    // while(true) {
+    //     static bool send_hid_data = true;
 
-        if (send_hid_data) {
-            HID_write(word);
-        }
+    //     if (send_hid_data) {
+    //         HID_write(word);
+    //     }
 
-        send_hid_data = !gpio_get_level(APP_BUTTON);
-        vTaskDelay(pdMS_TO_TICKS(200));
-    }
+    //     send_hid_data = !gpio_get_level(APP_BUTTON);
+    //     vTaskDelay(pdMS_TO_TICKS(200));
+    // }
 }

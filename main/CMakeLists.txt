@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "hid-interface.c"
         "display.c"
+        "ble-gatt.c"
         "main.c"
         "demo/clock.cpp"
 

@@ -1,3 +1,8 @@
+// ble-gatt.c
+//
+//
+// developed by: Bruno Castro (github: bdCastro)
+
 #include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -12,6 +17,7 @@
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
+
 #include "ble-gatt.h"
 
 #define GATTS_TABLE_TAG "SEC_GATTS_DEMO"
@@ -36,7 +42,7 @@ static uint8_t test_manufacturer[3]={'E', 'S', 'P'};
 static uint8_t sec_service_uuid[16] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
     //first uuid, 16bit, [12],[13] is the value
-    0xa9, 0x4c, 0x9d, 0x9f, 0x60, 0x31, 0x49, 0x86, 0x8f, 0x97, 0x87, 0x4c, 0xec, 0x86, 0x01, 0xfc,
+    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x18, 0x0D, 0x00, 0x00,
 };
 
 // config adv data
@@ -69,7 +75,7 @@ static esp_ble_adv_params_t heart_rate_adv_params = {
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_RPA_PUBLIC,
     .channel_map        = ADV_CHNL_ALL,
-    .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
+    .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
 struct gatts_profile_inst {
@@ -96,6 +102,79 @@ static struct gatts_profile_inst heart_rate_profile_tab[HEART_PROFILE_NUM] = {
         .gatts_cb = gatts_profile_event_handler,
         .gatts_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     },
+
+};
+
+/*
+ *  Heart Rate PROFILE ATTRIBUTES
+ ****************************************************************************************
+ */
+
+/// Heart Rate Sensor Service
+static const uint16_t heart_rate_svc = ESP_GATT_UUID_HEART_RATE_SVC;
+
+#define CHAR_DECLARATION_SIZE   (sizeof(uint8_t))
+static const uint16_t primary_service_uuid = ESP_GATT_UUID_PRI_SERVICE;
+static const uint16_t character_declaration_uuid = ESP_GATT_UUID_CHAR_DECLARE;
+static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
+static const uint8_t char_prop_notify = ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+static const uint8_t char_prop_read = ESP_GATT_CHAR_PROP_BIT_READ;
+static const uint8_t char_prop_read_write = ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_READ;
+
+/// Heart Rate Sensor Service - Heart Rate Measurement Characteristic, notify
+static const uint16_t heart_rate_meas_uuid = ESP_GATT_HEART_RATE_MEAS;
+static const uint8_t heart_measurement_ccc[2] ={0x00, 0x00};
+
+/// Heart Rate Sensor Service -Body Sensor Location characteristic, read
+static const uint16_t body_sensor_location_uuid = ESP_GATT_BODY_SENSOR_LOCATION;
+static const uint8_t body_sensor_loc_val[1] = {0x00};
+
+/// Heart Rate Sensor Service - Heart Rate Control Point characteristic, write&read
+static const uint16_t heart_rate_ctrl_point = ESP_GATT_HEART_RATE_CNTL_POINT;
+static const uint8_t heart_ctrl_point[1] = {0x00};
+
+/// Full HRS Database Description - Used to add attributes into the database
+static const esp_gatts_attr_db_t heart_rate_gatt_db[HRS_IDX_NB] =
+{
+    // Heart Rate Service Declaration
+    [HRS_IDX_SVC]                    =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ,
+      sizeof(uint16_t), sizeof(heart_rate_svc), (uint8_t *)&heart_rate_svc}},
+
+    // Heart Rate Measurement Characteristic Declaration
+    [HRS_IDX_HR_MEAS_CHAR]            =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+      CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_notify}},
+
+    // Heart Rate Measurement Characteristic Value
+    [HRS_IDX_HR_MEAS_VAL]             =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&heart_rate_meas_uuid, ESP_GATT_PERM_READ,
+      HRPS_HT_MEAS_MAX_LEN,0, NULL}},
+
+    // Heart Rate Measurement Characteristic - Client Characteristic Configuration Descriptor
+    [HRS_IDX_HR_MEAS_NTF_CFG]        =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ|ESP_GATT_PERM_WRITE,
+      sizeof(uint16_t),sizeof(heart_measurement_ccc), (uint8_t *)heart_measurement_ccc}},
+
+    // Body Sensor Location Characteristic Declaration
+    [HRS_IDX_BOBY_SENSOR_LOC_CHAR]  =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+      CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read}},
+
+    // Body Sensor Location Characteristic Value
+    [HRS_IDX_BOBY_SENSOR_LOC_VAL]   =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&body_sensor_location_uuid, ESP_GATT_PERM_READ_ENCRYPTED,
+      sizeof(uint8_t), sizeof(body_sensor_loc_val), (uint8_t *)body_sensor_loc_val}},
+
+    // Heart Rate Control Point Characteristic Declaration
+    [HRS_IDX_HR_CTNL_PT_CHAR]          =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+      CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write}},
+
+    // Heart Rate Control Point Characteristic Value
+    [HRS_IDX_HR_CTNL_PT_VAL]             =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&heart_rate_ctrl_point, ESP_GATT_PERM_WRITE_ENCRYPTED|ESP_GATT_PERM_READ_ENCRYPTED,
+      sizeof(uint8_t), sizeof(heart_ctrl_point), (uint8_t *)heart_ctrl_point}},
 };
 
 static char *esp_key_type_to_str(esp_ble_key_type_t key_type)
@@ -187,8 +266,10 @@ static void show_bonded_devices(void)
         ESP_LOGI(GATTS_TABLE_TAG, "malloc failed, return\n");
         return;
     }
+
     esp_ble_get_bond_device_list(&dev_num, dev_list);
     ESP_LOGI(GATTS_TABLE_TAG, "Bonded devices number %d", dev_num);
+
     for (int i = 0; i < dev_num; i++) {
         ESP_LOGI(GATTS_TABLE_TAG, "[%u] addr_type %u, addr "ESP_BD_ADDR_STR"",
                  i, dev_list[i].bd_addr_type, ESP_BD_ADDR_HEX(dev_list[i].bd_addr));
@@ -431,8 +512,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     } while (0);
 }
 
-void app_main(void)
-{
+void BLE_config() {
     esp_err_t ret;
 
     // Initialize NVS.
@@ -519,4 +599,10 @@ void app_main(void)
      * vTaskDelay(30000 / portTICK_PERIOD_MS);
      * remove_all_bonded_devices();
      */
+}
+
+void BLE_init() {
+    // Create a task to handle BLE operations
+    // xTaskCreate(TaskBLE, "BLE", 4 * 8196, NULL, 3, NULL);
+    BLE_config();
 }

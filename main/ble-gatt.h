@@ -1,8 +1,7 @@
-/*
- * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
- */
+// ble-gatt.h
+//
+//
+// developed by: Bruno Castro (github: bdCastro)
 
 
 #include <stdio.h>
@@ -21,7 +20,7 @@
 #define HRPS_HR_CTNL_PT_MASK            (0xC0)
 
 
-///Attributes State Machine
+// Attributes State Machine
 enum
 {
     HRS_IDX_SVC,
@@ -38,3 +37,5 @@ enum
 
     HRS_IDX_NB,
 };
+
+void BLE_init(void);
