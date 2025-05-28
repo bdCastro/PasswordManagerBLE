@@ -5,3 +5,8 @@
 dependencies.lock
 build/
 managed_components/
+/.vscode
+/.devcontainer
+
+#SDK junk
+sdkconfig*
