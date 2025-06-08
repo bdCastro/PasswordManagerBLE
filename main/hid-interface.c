@@ -104,8 +104,38 @@ void HID_config() {
 }
 
 // adds a word to be written on the queue
-void HID_write(char* word) {
-    xQueueSend(HIDQueue, &word, 100/portTICK_PERIOD_MS);
+void HID_write(char* word, uint16_t length) {
+    if (word == NULL || length == 0) {
+        ESP_LOGE(TAG, "Invalid word or length");
+        return;
+    }
+
+    if (HIDQueue == NULL) {
+        ESP_LOGE(TAG, "HIDQueue is not initialized");
+        return;
+    }
+
+    if (strlen(word) > BUFF_SIZE - 1) {
+        ESP_LOGE(TAG, "Word exceeds buffer size");
+        return;
+    }
+
+    // Allocate memory for the word and copy it
+    char* word_copy = (char*) malloc(BUFF_SIZE);
+    if (word_copy == NULL) {
+        ESP_LOGE(TAG, "Memory allocation failed");
+        return;
+    }
+
+    strncpy(word_copy, word, BUFF_SIZE - 1);
+    word_copy[BUFF_SIZE - 1] = '\0'; // Ensure null termination
+
+    // Send the word to the queue
+    if (xQueueSend(HIDQueue, &word_copy, 100 / portTICK_PERIOD_MS) != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to send word to HIDQueue");
+        free(word_copy); // Free memory if sending fails
+        return;
+    }
 }
 
 void TaskHID(void* args) {
@@ -113,7 +143,7 @@ void TaskHID(void* args) {
 
     // Queue initialization
     HIDQueue = xQueueCreate(1, sizeof(char*));
-    char* word = (char*) malloc(BUFF_SIZE);
+    char* word;
 
     while (true) {
         xQueueReceive(HIDQueue, &word, portMAX_DELAY);
@@ -138,6 +168,11 @@ void TaskHID(void* args) {
                 chr = (uint8_t) word[++i];
             }
         }
+
+        // Free the memory allocated for the word
+        free(word);
+        word = NULL; // Reset pointer to avoid dangling pointer issues
+        vTaskDelay(pdMS_TO_TICKS(100)); // Delay to avoid busy-waiting
     }
 }
 

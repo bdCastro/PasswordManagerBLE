@@ -19,6 +19,7 @@
 #include "esp_bt_device.h"
 
 #include "ble-gatt.h"
+#include "hid-interface.h"
 
 #define GATTS_TABLE_TAG "SEC_GATTS_DEMO"
 
@@ -93,8 +94,7 @@ struct gatts_profile_inst {
     esp_bt_uuid_t descr_uuid;
 };
 
-static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
-                                        esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
 /* One gatt-based profile one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
 static struct gatts_profile_inst heart_rate_profile_tab[HEART_PROFILE_NUM] = {
@@ -116,55 +116,54 @@ static const uint16_t heart_rate_svc = ESP_GATT_UUID_HEART_RATE_SVC;
 #define CHAR_DECLARATION_SIZE   (sizeof(uint8_t))
 static const uint16_t primary_service_uuid = ESP_GATT_UUID_PRI_SERVICE;
 static const uint16_t character_declaration_uuid = ESP_GATT_UUID_CHAR_DECLARE;
-static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
-static const uint8_t char_prop_notify = ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-static const uint8_t char_prop_read = ESP_GATT_CHAR_PROP_BIT_READ;
+// static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
+// static const uint8_t char_prop_notify = ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+// static const uint8_t char_prop_read = ESP_GATT_CHAR_PROP_BIT_READ;
 static const uint8_t char_prop_read_write = ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_READ;
 
-/// Heart Rate Sensor Service - Heart Rate Measurement Characteristic, notify
-static const uint16_t heart_rate_meas_uuid = ESP_GATT_HEART_RATE_MEAS;
-static const uint8_t heart_measurement_ccc[2] ={0x00, 0x00};
+// /// Heart Rate Sensor Service - Heart Rate Measurement Characteristic, notify
+// static const uint16_t heart_rate_meas_uuid = ESP_GATT_HEART_RATE_MEAS;
+// static const uint8_t heart_measurement_ccc[2] ={0x00, 0x00};
 
-/// Heart Rate Sensor Service -Body Sensor Location characteristic, read
-static const uint16_t body_sensor_location_uuid = ESP_GATT_BODY_SENSOR_LOCATION;
-static const uint8_t body_sensor_loc_val[1] = {0x00};
+// /// Heart Rate Sensor Service -Body Sensor Location characteristic, read
+// static const uint16_t body_sensor_location_uuid = ESP_GATT_BODY_SENSOR_LOCATION;
+// static const uint8_t body_sensor_loc_val[1] = {0x00};
 
-/// Heart Rate Sensor Service - Heart Rate Control Point characteristic, write&read
+// Heart Rate Sensor Service - Heart Rate Control Point characteristic, write&read
 static const uint16_t heart_rate_ctrl_point = ESP_GATT_HEART_RATE_CNTL_POINT;
 static const uint8_t heart_ctrl_point[1] = {0x00};
 
 /// Full HRS Database Description - Used to add attributes into the database
-static const esp_gatts_attr_db_t heart_rate_gatt_db[HRS_IDX_NB] =
-{
+static const esp_gatts_attr_db_t heart_rate_gatt_db[HRS_IDX_NB] = {
     // Heart Rate Service Declaration
     [HRS_IDX_SVC]                    =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ,
       sizeof(uint16_t), sizeof(heart_rate_svc), (uint8_t *)&heart_rate_svc}},
 
-    // Heart Rate Measurement Characteristic Declaration
-    [HRS_IDX_HR_MEAS_CHAR]            =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-      CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_notify}},
+    // // Heart Rate Measurement Characteristic Declaration
+    // [HRS_IDX_HR_MEAS_CHAR]            =
+    // {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+    //   CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_notify}},
 
-    // Heart Rate Measurement Characteristic Value
-    [HRS_IDX_HR_MEAS_VAL]             =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&heart_rate_meas_uuid, ESP_GATT_PERM_READ,
-      HRPS_HT_MEAS_MAX_LEN,0, NULL}},
+    // // Heart Rate Measurement Characteristic Value
+    // [HRS_IDX_HR_MEAS_VAL]             =
+    // {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&heart_rate_meas_uuid, ESP_GATT_PERM_READ,
+    //   HRPS_HT_MEAS_MAX_LEN,0, NULL}},
 
     // Heart Rate Measurement Characteristic - Client Characteristic Configuration Descriptor
-    [HRS_IDX_HR_MEAS_NTF_CFG]        =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ|ESP_GATT_PERM_WRITE,
-      sizeof(uint16_t),sizeof(heart_measurement_ccc), (uint8_t *)heart_measurement_ccc}},
+    // [HRS_IDX_HR_MEAS_NTF_CFG]        =
+    // {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ|ESP_GATT_PERM_WRITE,
+    //   sizeof(uint16_t),sizeof(heart_measurement_ccc), (uint8_t *)heart_measurement_ccc}},
 
-    // Body Sensor Location Characteristic Declaration
-    [HRS_IDX_BOBY_SENSOR_LOC_CHAR]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-      CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read}},
+    // // Body Sensor Location Characteristic Declaration
+    // [HRS_IDX_BOBY_SENSOR_LOC_CHAR]  =
+    // {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+    //   CHAR_DECLARATION_SIZE,CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read}},
 
-    // Body Sensor Location Characteristic Value
-    [HRS_IDX_BOBY_SENSOR_LOC_VAL]   =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&body_sensor_location_uuid, ESP_GATT_PERM_READ_ENCRYPTED,
-      sizeof(uint8_t), sizeof(body_sensor_loc_val), (uint8_t *)body_sensor_loc_val}},
+    // // Body Sensor Location Characteristic Value
+    // [HRS_IDX_BOBY_SENSOR_LOC_VAL]   =
+    // {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&body_sensor_location_uuid, ESP_GATT_PERM_READ_ENCRYPTED,
+    //   sizeof(uint8_t), sizeof(body_sensor_loc_val), (uint8_t *)body_sensor_loc_val}},
 
     // Heart Rate Control Point Characteristic Declaration
     [HRS_IDX_HR_CTNL_PT_CHAR]          =
@@ -177,8 +176,7 @@ static const esp_gatts_attr_db_t heart_rate_gatt_db[HRS_IDX_NB] =
       sizeof(uint8_t), sizeof(heart_ctrl_point), (uint8_t *)heart_ctrl_point}},
 };
 
-static char *esp_key_type_to_str(esp_ble_key_type_t key_type)
-{
+static char *esp_key_type_to_str(esp_ble_key_type_t key_type) {
    char *key_str = NULL;
    switch(key_type) {
     case ESP_LE_KEY_NONE:
@@ -217,8 +215,7 @@ static char *esp_key_type_to_str(esp_ble_key_type_t key_type)
    return key_str;
 }
 
-static char *esp_auth_req_to_str(esp_ble_auth_req_t auth_req)
-{
+static char *esp_auth_req_to_str(esp_ble_auth_req_t auth_req) {
    char *auth_str = NULL;
    switch(auth_req) {
     case ESP_LE_AUTH_NO_BOND:
@@ -253,8 +250,7 @@ static char *esp_auth_req_to_str(esp_ble_auth_req_t auth_req)
    return auth_str;
 }
 
-static void show_bonded_devices(void)
-{
+static void show_bonded_devices(void) {
     int dev_num = esp_ble_get_bond_device_num();
     if (dev_num == 0) {
         ESP_LOGI(GATTS_TABLE_TAG, "Bonded devices number zero\n");
@@ -278,8 +274,7 @@ static void show_bonded_devices(void)
     free(dev_list);
 }
 
-static void __attribute__((unused)) remove_all_bonded_devices(void)
-{
+static void __attribute__((unused)) remove_all_bonded_devices(void) {
     int dev_num = esp_ble_get_bond_device_num();
     if (dev_num == 0) {
         ESP_LOGI(GATTS_TABLE_TAG, "Bonded devices number zero\n");
@@ -405,25 +400,24 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
     }
 }
 
-static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
-                                        esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
-{
+static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     ESP_LOGV(GATTS_TABLE_TAG, "event = %x",event);
     switch (event) {
         case ESP_GATTS_REG_EVT:
-            ESP_LOGI(GATTS_TABLE_TAG, "GATT server register, status %d, app_id %d, gatts_if %d",
-                     param->reg.status, param->reg.app_id, gatts_if);
+            ESP_LOGI(GATTS_TABLE_TAG, "GATT server register, status %d, app_id %d, gatts_if %d", param->reg.status, param->reg.app_id, gatts_if);
             esp_ble_gap_set_device_name(example_device_name);
+
             //generate a resolvable random address
             esp_ble_gap_config_local_privacy(true);
-            esp_ble_gatts_create_attr_tab(heart_rate_gatt_db, gatts_if,
-                                      HRS_IDX_NB, HEART_RATE_SVC_INST_ID);
+            esp_ble_gatts_create_attr_tab(heart_rate_gatt_db, gatts_if, HRS_IDX_NB, HEART_RATE_SVC_INST_ID);
             break;
         case ESP_GATTS_READ_EVT:
             break;
         case ESP_GATTS_WRITE_EVT:
             ESP_LOGI(GATTS_TABLE_TAG, "Characteristic write, value ");
             ESP_LOG_BUFFER_HEX(GATTS_TABLE_TAG, param->write.value, param->write.len);
+
+            HID_write((char*) param->write.value, param->write.len);
             break;
         case ESP_GATTS_EXEC_WRITE_EVT:
             break;
@@ -483,10 +477,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
     }
 }
 
-
-static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if,
-                                esp_ble_gatts_cb_param_t *param)
-{
+static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     /* If event is register event, store the gatts_if for each profile */
     if (event == ESP_GATTS_REG_EVT) {
         if (param->reg.status == ESP_GATT_OK) {
@@ -572,7 +563,7 @@ void BLE_config() {
 
     /* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;     //bonding with peer device after authentication
-    esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;           //set the IO capability to No output No input
+    esp_ble_io_cap_t iocap = ESP_IO_CAP_OUT;           //set the IO capability to No output No input
     uint8_t key_size = 16;      //the key size should be 7~16 bytes
     uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;

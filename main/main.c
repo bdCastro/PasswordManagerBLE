@@ -16,9 +16,9 @@
 
 void app_main() {
     // Initialize HID interface, display, and BLE GATT
-    BLE_init();
     HID_init();
-    display_init();
+    BLE_init();
+    // display_init();
 
     // // configures the BOOT button to send the <word> string
     // const gpio_config_t boot_button_config = {
@@ -31,7 +31,7 @@ void app_main() {
 
     // ESP_ERROR_CHECK(gpio_config(&boot_button_config));
 
-    // char* word = "bruno@teste.com.br\ttesteTESTEbanana\n\0";
+    // char* word = "Galo doido\n";
     // while(true) {
     //     static bool send_hid_data = true;
 
