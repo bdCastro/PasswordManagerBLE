@@ -33,7 +33,7 @@
 #define ADV_CONFIG_FLAG                           (1 << 0)
 #define SCAN_RSP_CONFIG_FLAG                      (1 << 1)
 
-static char example_device_name[ESP_BLE_ADV_NAME_LEN_MAX] = "ESP_BLE_SECURITY";
+static char example_device_name[ESP_BLE_ADV_NAME_LEN_MAX] = "PASSWORD_MANAGER";
 static uint8_t adv_config_done = 0;
 
 static uint16_t heart_rate_handle_table[HRS_IDX_NB];
